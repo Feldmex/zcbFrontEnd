@@ -1,0 +1,43 @@
+div.navbar {
+	top: 5px;
+	width: 100%;
+	position: fixed;
+	background-color: #dddd;
+	padding: 10px;
+	border-radius: 10px;
+	margin-right: 100px;
+	z-index: 999;
+}
+
+div.navbar > div.links > ul {
+	height: 105px;
+	line-height: 0px;
+	float: right;
+	color: #fff;
+	list-style-type: none;
+	margin-right: 25px;
+}
+
+
+div.navbar > div.logo > a > img {
+	float: left;
+	height: 125px;
+	border-radius: 15px;
+}
+
+div.navbar > div.links > ul > * {
+	padding: 50px;
+	background-color: orange;
+	color: #fff;
+	font-size: 35px;
+	text-align: center;
+	float: right;
+	border-radius: 15px;
+	margin-left: 10px;
+	margin-right: 10px;
+}
+
+div.navbar > div.links > ul > li > a {
+	color: #fff;
+	text-decoration: none;
+}

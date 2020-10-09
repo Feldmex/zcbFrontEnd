@@ -1,0 +1,118 @@
+* {
+	font-family: Helvetica;
+}
+
+body {
+	background-color: #eee;
+}
+
+div.content {
+	clear: both;
+	position: relative;
+	top: 140px;
+	color: orange;
+	margin-left: 150px;
+	margin-right: 150px;
+}
+
+.header {
+	font-size: 50px;
+	width: 100%;
+	text-align: center;
+}
+
+.subHeader {
+	font-size: 35px;
+	width: 100%;
+	text-align: center;	
+}
+
+.productMenu {
+	font-size: 25px;
+	color: gray;
+	text-align: left;
+}
+
+.productList {
+	font-size: 20px;
+}
+
+.productList > li > a {
+	color: orange;
+	font-size: 25px;
+	text-decoration: none;
+}
+
+.productList > li > a.tradingPair:hover {
+	color: red;
+}
+
+button {
+	color: orange;
+	background-color: white;
+	border-radius: 5px;
+	font-size: 30px;
+}
+
+.buttonBox {
+	margin: auto;
+	width: 100%;
+
+}
+
+.buttonBox > button {
+	width: 50%;
+}
+
+._3buttonBox {
+	margin: auto;
+	width: 100%;
+
+}
+
+._3buttonBox > button {
+	width: 33.33%;
+}
+
+.subSubHeaderLeft {
+	margin-top: 45px;
+	text-align: left;
+}
+
+.subSubHeaderRight {
+	margin-top: 45px;
+	text-align: right;
+}
+
+.subSubHeaderLeft > span, .subSubHeaderRight > span {
+	color: orange;
+	padding: 20px;
+	border-radius: 10px;
+}
+
+p, ol {
+	font-size: 20px;
+	color: black;
+	border-radius: 7px;
+}
+
+p > a {
+	text-decoration: none;
+}
+
+._code {
+	background-color: grey;
+	color: #eee;
+	border-radius: 20px;
+}
+
+.footer {
+	clear: both;
+	position: fixed;
+	bottom: 0px;
+	right: 0px;
+}
+
+.footer > a {
+	float: right;
+}

@@ -1,0 +1,17 @@
+li, li > a {
+	color: orange;
+	text-decoration: none;
+
+}
+
+li:hover {
+	color: red;
+	font-size: 27px;
+}
+
+.productDiv {
+	color: orange;
+	text-decoration: none;
+	font-size: 30px;
+	text-align: left;
+}
