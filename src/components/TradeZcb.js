@@ -122,7 +122,7 @@ class Home extends Component {
 			contract.methods.symbol().call().then(res => res.substring(0, res.length-3)),
 			contract.methods.maturity().call().then(res => getDateFormat(parseInt(res))),
 			contract.methods.decimals().call().then(res => parseInt(res)),
-			contract.methods.bondBalance(window.web3.eth.defaultAccount).call(),
+			contract.methods.balanceBonds(window.web3.eth.defaultAccount).call(),
 			contract.methods.balanceYield(window.web3.eth.defaultAccount).call(),
 			contract.methods.aw().call().then(addr => new window.web3.eth.Contract(aaveWrapperAbi, addr)),
 			contract.methods.inPayoutPhase().call()
@@ -146,7 +146,7 @@ class Home extends Component {
 					return (new window.web3.eth.Contract(IERC20Abi, res)).methods.balanceOf(window.web3.eth.defaultAccount).call();
 				}).then(res => getBalanceString(res, decimals)),
 			aaveWrapperContract.methods.allowance(window.web3.eth.defaultAccount, contract._address).call()
-				.then(res => aaveWrapperContract.methods.ATokenToWrappedToken(res).call())
+				.then(res => (res === "0" ? "0" : aaveWrapperContract.methods.ATokenToWrappedToken(res).call()))
 				.then(res => getBalanceString(res, decimals)),
 			(inPayoutPhase ? contract.methods.maturityConversionRate().call(): aaveWrapperContract.methods.WrappedTokenToAToken(_10To18).call())
 				.then(res => new BN(res))

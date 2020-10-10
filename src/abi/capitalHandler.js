@@ -142,7 +142,7 @@ var abi = [
           "type": "address"
         }
       ],
-      "name": "bondBalance",
+      "name": "balanceBonds",
       "outputs": [
         {
           "internalType": "int256",
