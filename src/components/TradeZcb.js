@@ -108,28 +108,27 @@ class Home extends Component {
 	async fetchState() {
 		await this.getWeb3();
 		var contract = new window.web3.eth.Contract(zcbCapitalHandlerAbi, this.state.zcbCapitalHandlerAddress);
-		var symbol, maturity, decimals, balanceBond, balanceYield, aaveWrapperContract,
-			balanceWrapped, balanceAToken, approvalWrapped, approvalDeposit, inPayoutPhase;
+		var symbol, maturity, decimals, balanceOf, balanceBond, balanceYield, aaveWrapperContract,
+			balanceWrapped, balanceAToken, approvalWrapped, approvalDeposit, inPayoutPhase, maturityTimestamp;
 		[
 			symbol,
 			maturity,
 			decimals,
+			balanceOf,
 			balanceBond,
 			balanceYield,
 			aaveWrapperContract,
 			inPayoutPhase
 		] = await Promise.all([
 			contract.methods.symbol().call().then(res => res.substring(0, res.length-3)),
-			contract.methods.maturity().call().then(res => getDateFormat(parseInt(res))),
+			contract.methods.maturity().call().then(res => {maturityTimestamp = res; return getDateFormat(parseInt(res))}),
 			contract.methods.decimals().call().then(res => parseInt(res)),
+			contract.methods.balanceOf(window.web3.eth.defaultAccount).call(),
 			contract.methods.balanceBonds(window.web3.eth.defaultAccount).call(),
 			contract.methods.balanceYield(window.web3.eth.defaultAccount).call(),
 			contract.methods.aw().call().then(addr => new window.web3.eth.Contract(aaveWrapperAbi, addr)),
 			contract.methods.inPayoutPhase().call()
 		]);
-
-		if (balanceYield !== "0")
-			balanceYield = await aaveWrapperContract.methods.WrappedTokenToAToken(balanceYield).call();
 
 		var aTokenAddress, conversionRate;
 
@@ -139,15 +138,13 @@ class Home extends Component {
 			approvalDeposit,
 			conversionRate
 		] = await Promise.all([
-			aaveWrapperContract.methods.balanceOf(window.web3.eth.defaultAccount).call().then(res => getBalanceString(res, decimals)),
+			aaveWrapperContract.methods.balanceOf(window.web3.eth.defaultAccount).call(),
 			aaveWrapperContract.methods.aToken().call()
 				.then(res => {
 					aTokenAddress = res;
 					return (new window.web3.eth.Contract(IERC20Abi, res)).methods.balanceOf(window.web3.eth.defaultAccount).call();
 				}).then(res => getBalanceString(res, decimals)),
-			aaveWrapperContract.methods.allowance(window.web3.eth.defaultAccount, contract._address).call()
-				.then(res => (res === "0" ? "0" : aaveWrapperContract.methods.ATokenToWrappedToken(res).call()))
-				.then(res => getBalanceString(res, decimals)),
+			aaveWrapperContract.methods.allowance(window.web3.eth.defaultAccount, contract._address).call(),
 			(inPayoutPhase ? contract.methods.maturityConversionRate().call(): aaveWrapperContract.methods.WrappedTokenToAToken(_10To18).call())
 				.then(res => new BN(res))
 		]);
@@ -158,11 +155,16 @@ class Home extends Component {
 
 
 		//convert to aToken equivalent
-		balanceYield = (new BN(balanceYield)).mul(conversionRate).div(new BN(_10To18))
+		approvalDeposit = (new BN(approvalDeposit)).mul(conversionRate).div(new BN(_10To18));
+		balanceWrapped = (new BN(balanceWrapped)).mul(conversionRate).div(new BN(_10To18));
+		balanceYield = (new BN(balanceYield)).mul(conversionRate).div(new BN(_10To18));
 
 		var collateralLocked = new BN(balanceBond[0] === "-" ? balanceBond.substring(1) : "0");
 		var collateralFree = balanceYield.sub(collateralLocked);
 
+		approvalDeposit = getBalanceString(approvalDeposit, decimals);
+		balanceOf = getBalanceString(balanceOf, decimals);
+		balanceWrapped = getBalanceString(balanceWrapped, decimals);
 		balanceBond = getBalanceString(balanceBond, decimals);
 		balanceYield = getBalanceString(balanceYield, decimals);
 		collateralLocked = getBalanceString(collateralLocked, decimals);
@@ -174,6 +176,7 @@ class Home extends Component {
 				address={contract._address}
 				symbol={symbol}
 				maturity={maturity}
+				balanceOf={balanceOf}
 				balanceBond={balanceBond}
 				balanceYield={balanceYield}
 				balanceWrapped={balanceWrapped}
@@ -189,11 +192,14 @@ class Home extends Component {
 			set: true,
 			decimals,
 			symbol,
+			maturity: maturityTimestamp,
 			contract,
 			aaveWrapperContract,
 			balanceBond,
 			collateralLocked,
 			collateralFree,
+			aTokenAddress,
+			conversionRate,
 			aTokenContract: new window.web3.eth.Contract(IERC20Abi, aTokenAddress)
 		});
 	}
@@ -240,6 +246,20 @@ class Home extends Component {
 		});
 	}
 
+	clickFind1 = () => {
+		this.setState({
+			formIndex: 7,
+			label: `Price of ${this.state.symbol}zcb/${this.state.symbol}`
+		});
+	}
+
+	clickFind2 = () => {
+		this.setState({
+			formIndex: 8,
+			label: `Annualized Yield (in %)`
+		});
+	}
+
 	async wrap(amount) {
 		const {aTokenContract, aaveWrapperContract, decimals, symbol} = this.state;
 		var bal = new BN(await aTokenContract.methods.balanceOf(window.web3.eth.defaultAccount).call());
@@ -270,7 +290,8 @@ class Home extends Component {
 	}
 
 	async deposit(amount) {
-		const {contract, aaveWrapperContract, symbol, decimals} = this.state;
+		const {contract, aaveWrapperContract, symbol, decimals, conversionRate} = this.state;
+		amount = (new BN(amount)).mul(new BN(_10To18)).div(conversionRate).toString();
 		var bal = new BN(await aaveWrapperContract.methods.balanceOf(window.web3.eth.defaultAccount).call());
 		if (bal.cmp(new BN(amount)) === -1) {
 			alert(`Your balance is too low, try to deposit a smaller amount of wrapped ${symbol}.`);
@@ -286,7 +307,8 @@ class Home extends Component {
 	}
 
 	async approveToWrap(amount) {
-		const {aaveWrapperContract, aTokenContract} = this.state;
+		const {aaveWrapperContract, aTokenContract, conversionRate} = this.state;
+		amount = (new BN(amount)).mul(new BN(_10To18)).div(conversionRate).toString();
 		await aTokenContract.methods.approve(aaveWrapperContract._address, amount).send({from: window.web3.eth.defaultAccount});
 	}
 
@@ -306,30 +328,68 @@ class Home extends Component {
 		await contract.methods.withdraw(window.web3.eth.defaultAccount, amount, false).send({from: window.web3.eth.defaultAccount});
 	}
 
-	onFormSubmit = async (amount) => {
+	async findYield(price) {
+		const {symbol, maturity} = this.state;
+		var priceString = price;
+		price = parseFloat(price);
+		if (price <= 0) {
+			alert('Price Must Be Positive and Non Zero');
+			return;
+		}
+		const secondsPerYear = 31556925.216;
+		var years = (parseInt(maturity) - ((new Date()).getTime()/1000))/secondsPerYear;
+		// 1.0 == price*(1+(annualizedPctYield)/100)**years
+		// price**-1 == (1+(annualizedPctYield)/100)**years
+		// (price**-1)**(1/years) == 1+(annualizedPctYield)/100)
+		// ((price**(-1/years))-1)*100 == annualizedPctYield
+		var annualizedPctYield = 100*((price**(-1/years))-1);
+		alert(`With a Price of ${priceString} the Annualized Yield of ${symbol}zcb is ${annualizedPctYield.toPrecision(6)}%`);
+	}
+
+	async findPrice(_yield) {
+		const {symbol, maturity} = this.state;
+		var yieldString = _yield;
+		_yield = parseFloat(_yield);
+		const secondsPerYear = 31556925.216;
+		var years = (parseInt(maturity) - ((new Date()).getTime()/1000))/secondsPerYear;
+		// 1.0 == price*(1+(annualizedPctYield)/100)**years
+		// price == (1+(annualizedPctYield)/100)**(-years)
+		var price = (1+(_yield)/100)**(-years);
+		alert(`With an Annualized Yield of ${yieldString}% the Price of ${symbol}zcb is ${price.toPrecision(6)} ${symbol}`);
+	}
+
+
+	onFormSubmit = async (param) => {
 		var {formIndex, decimals, engaged} = this.state;
 		if (engaged) return;
 		await (new Promise((res, rej) => this.setState({engaged: true}, res)));
 		try {
-			amount = getAmountFromAdjustedString(amount, decimals);
+			if (formIndex < 7)
+				param = getAmountFromAdjustedString(param, decimals);
 			switch(formIndex) {
 				case 1:
-					await this.wrap(amount);
+					await this.wrap(param);
 					break;
 				case 2:
-					await this.unWrap(amount);
+					await this.unWrap(param);
 					break;
 				case 3:
-					await this.deposit(amount);
+					await this.deposit(param);
 					break;
 				case 4:
-					await this.approveToWrap(amount);
+					await this.approveToWrap(param);
 					break;
 				case 5:
-					await this.approveToDeposit(amount);
+					await this.approveToDeposit(param);
 					break;
 				case 6:
-					await this.withdraw(amount);
+					await this.withdraw(param);
+					break;
+				case 7:
+					await this.findYield(param);
+					break;
+				case 8:
+					await this.findPrice(param);
 					break;
 				default:
 					alert('please select one of the options before submitting your transaction');
@@ -343,11 +403,19 @@ class Home extends Component {
 		if (!this.state.set)
 			this.fetchState();
 
+		let swapUrl0 = `https://app.uniswap.org/#/swap?inputCurrency=${this.state.zcbCapitalHandlerAddress}&outputCurrency=${this.state.aTokenAddress}`;
+		let swapUrl1 = `https://app.uniswap.org/#/swap?inputCurrency=${this.state.aTokenAddress}&outputCurrency=${this.state.zcbCapitalHandlerAddress}`;
+		let addLiquidityUrl = `https://app.uniswap.org/#/add/${this.state.aTokenAddress}/${this.state.zcbCapitalHandlerAddress}`;
+		let removeLiquidityUrl = `https://app.uniswap.org/#/remove/${this.state.aTokenAddress}/${this.state.zcbCapitalHandlerAddress}`;
 		return (
 			<div className="content">
 				<h1 className="header">Rate Exposure With Zero Coupon Bonds for Ethereum Assets</h1>
+
 				{this.state.jsxCapitalHandler}
 				<br />
+				<button onClick={this.clickFind1}>Find Annualized Yield From Price</button>
+				<button onClick={this.clickFind2}>Find Price From Annualized Yield</button>
+				<br /><br />
 				<button onClick={this.clickWrap}>Wrap {this.state.symbol}</button>
 				<button onClick={this.clickUnWrap}>Unwrap {this.state.symbol}</button>
 				<button onClick={this.clickDeposit}>Deposit Wrapped {this.state.symbol} as Collateral</button>
@@ -356,13 +424,19 @@ class Home extends Component {
 				<button onClick={this.clickApproveWrap}>Approve to Wrap {this.state.symbol}</button>
 				<button onClick={this.clickApproveDeposit}>Approve to Deposit Wrapped {this.state.symbol}</button>
 				<br /><br />
-				<a target= "_blank" rel="noopener noreferrer" href={`https://app.uniswap.org/#/swap?inputCurrency=${this.state.zcbCapitalHandlerAddress}&outputCurrency=${this.state.aTokenAddress}`}>
+				<a target="_blank" rel="noopener noreferrer" href={swapUrl0}>
 					<button>Sell Bonds Against Your Collateral</button>
 				</a>
-				<a target= "_blank" rel="noopener noreferrer" href={`https://app.uniswap.org/#/swap?inputCurrency=${this.state.aTokenAddress}&outputCurrency=${this.state.zcbCapitalHandlerAddress}`}>
+				<a target="_blank" rel="noopener noreferrer" href={swapUrl1}>
 					<button>Buy Bonds</button>
 				</a>
-
+				<br /><br />
+				<a target="_blank" rel="noopener noreferrer" href={addLiquidityUrl}>
+					<button>Add Liquidity to Uniswap</button>
+				</a>
+				<a target="_blank" rel="noopener noreferrer" href={removeLiquidityUrl}>
+					<button>Remove Liquidity From Uniswap</button>
+				</a>
 				<Form label={this.state.label} onSubmit={this.onFormSubmit}/>
 
 				<br />

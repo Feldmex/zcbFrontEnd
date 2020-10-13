@@ -3,10 +3,10 @@ import './css/ZcbProduct.css';
 import {Link} from 'react-router-dom';
 
 function ZcbProduct(props) {
-	var balances = typeof(props.balanceBond) === "undefined" ? 
+	var balances = typeof(props.balanceOf) === "undefined" ? 
 		<div></div>: 
 		<div>
-			Your Balance {props.symbol} zero coupon bonds: {props.balanceBond} <br />
+			Your Balance {props.symbol} zero coupon bonds ({props.symbol}zcb): {props.balanceOf} <br />
 			Your Collateral in this Contract: {props.balanceYield}
 		</div>;
 	var extraCollateralInfo = typeof(props.balanceLocked) === "undefined" ?
@@ -20,7 +20,7 @@ function ZcbProduct(props) {
 		<div>
 			Your Balance of Wrapped {props.symbol}: {props.balanceWrapped} <br />
 			Your Balance of non-Wrapped {props.symbol}: {props.balanceAToken}
-		</div>
+		</div>;
 	var approvals = typeof(props.balanceWrapped) === "undefined" ?
 		<div></div>:
 		<div>
@@ -43,7 +43,7 @@ function ZcbProduct(props) {
 	else
 		return (
 			<div className="productDiv">
-				{props.symbol} Zero Coupon Bond, Matures on: {props.maturity} <br /><br />
+				<h1 className="subHeader">{props.symbol} Zero Coupon Bond ({props.symbol}zcb), Matures on: {props.maturity}</h1>
 				{balances}
 				{extraCollateralInfo}
 				{otherBalances}

@@ -26,9 +26,16 @@ class Form extends Component {
 	}
 
 	static getDerivedStateFromProps(props, state) {
-		return {
+		if (state.label === props.label)
+			return {
+				label: props.label,
+				onSubmit: props.onSubmit
+			};
+		else return {
 			label: props.label,
-			onSubmit: props.onSubmit
+			onSubmit: props.onSubmit,
+			value: '',
+			prevValue: ''
 		};
 	}
 
@@ -51,7 +58,7 @@ class Form extends Component {
 				<form onSubmit={this.handleSubmit}>
 					<label>{this.state.label}</label>
 					<input type="text" onChange={this.onChangeOnlyNum} value={this.state.value}/>
-					<button type="submit">Send Transaction</button>
+					<button type="submit">Submit</button>
 					<button type="button" onClick={this.clearInputField}>Clear Input Field</button>
 				</form>
 			</div>);

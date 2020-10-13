@@ -47,7 +47,7 @@ class Home extends Component {
 	constructor() {
 		super();
 		this.state = {
-			zcbOrganizerAddress: "0x9b4e383192a089C8177f5E1293FC037956Cfd884",
+			zcbOrganizerAddress: "0x4038a6249aC11610D28E86C0350AaeCAB38391Df",
 			jsxBondElements: []
 		};
 	}
@@ -102,9 +102,10 @@ class Home extends Component {
 						symbol: (await contract.methods.symbol().call()),
 						maturity: getDateFormat(parseInt(await contract.methods.maturity().call())),
 						decimals: parseInt(await contract.methods.decimals().call()),
-						balanceBond: await contract.methods.bondBalance(window.web3.eth.defaultAccount).call(),
+						balanceBond: await contract.methods.balanceBonds(window.web3.eth.defaultAccount).call(),
 						balanceYield: balYield,
-				}) } ));
+					});
+				 } ));
 			capitalHandlers = capitalHandlers
 				.map(obj => {
 					obj.symbol = obj.symbol.substring(1, obj.symbol.length-3);
