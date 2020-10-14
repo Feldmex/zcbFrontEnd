@@ -68,7 +68,8 @@ class Home extends Component {
 			zcbCapitalHandlerAddress: window.location.href.split('/')[window.location.href.split('/').length -1],
 			formIndex: 0,
 			label: '',
-			engaged: false
+			engaged: false,
+			gotWeb3: false
 		};
 	}
 
@@ -102,11 +103,12 @@ class Home extends Component {
 	            alert('meta mask must be enabled for this website to function');
 	            reject();
 		    }
-		});
+		}).then(res => this.setState({gotWeb3: true}));
 	}
 
 	async fetchState() {
-		await this.getWeb3();
+		if (!this.state.gotWeb3)
+			await this.getWeb3();
 		var contract = new window.web3.eth.Contract(zcbCapitalHandlerAbi, this.state.zcbCapitalHandlerAddress);
 		var symbol, maturity, decimals, balanceOf, balanceBond, balanceYield, aaveWrapperContract,
 			balanceWrapped, balanceAToken, approvalWrapped, approvalDeposit, inPayoutPhase, maturityTimestamp;
@@ -358,6 +360,16 @@ class Home extends Component {
 		alert(`With an Annualized Yield of ${yieldString}% the Price of ${symbol}zcb is ${price.toPrecision(6)} ${symbol}`);
 	}
 
+	claim = async () => {
+		await (new Promise((res, rej) => this.setState({engaged: true}, res)));
+		const {contract} = this.state;
+		try {
+			await contract.methods.claimBondPayout(window.web3.eth.defaultAccount).send({from: window.web3.eth.defaultAccount});
+
+		} catch (err) {console.error(err);alert('Transaction Failed');}
+		this.setState({set: false, engaged: false});
+	}
+
 
 	onFormSubmit = async (param) => {
 		var {formIndex, decimals, engaged} = this.state;
@@ -395,50 +407,68 @@ class Home extends Component {
 					alert('please select one of the options before submitting your transaction');
 					break;
 			}
-		} catch (err) {console.error(err);}
+		} catch (err) {console.error(err);alert('Transaction Failed');}
 		this.setState({set: false, engaged: false});
 	}
 
 	render() {
 		if (!this.state.set)
 			this.fetchState();
+		const {maturity} = this.state;
 
 		let swapUrl0 = `https://app.uniswap.org/#/swap?inputCurrency=${this.state.zcbCapitalHandlerAddress}&outputCurrency=${this.state.aTokenAddress}`;
 		let swapUrl1 = `https://app.uniswap.org/#/swap?inputCurrency=${this.state.aTokenAddress}&outputCurrency=${this.state.zcbCapitalHandlerAddress}`;
 		let addLiquidityUrl = `https://app.uniswap.org/#/add/${this.state.aTokenAddress}/${this.state.zcbCapitalHandlerAddress}`;
 		let removeLiquidityUrl = `https://app.uniswap.org/#/remove/${this.state.aTokenAddress}/${this.state.zcbCapitalHandlerAddress}`;
+		let buttons = <div></div>;
+
+		if (maturity > parseInt((new Date()).getTime()/1000))
+			buttons = 
+				<div>
+					<button onClick={this.clickFind1}>Find Annualized Yield From Price</button>
+					<button onClick={this.clickFind2}>Find Price From Annualized Yield</button>
+					<br /><br />
+					<button onClick={this.clickWrap}>Wrap {this.state.symbol}</button>
+					<button onClick={this.clickUnWrap}>Unwrap {this.state.symbol}</button>
+					<button onClick={this.clickDeposit}>Deposit Wrapped {this.state.symbol} as Collateral</button>
+					<button onClick={this.clickWithdraw}>Withdraw Funds {this.state.withdraw}</button>
+					<br /><br />
+					<button onClick={this.clickApproveWrap}>Approve to Wrap {this.state.symbol}</button>
+					<button onClick={this.clickApproveDeposit}>Approve to Deposit Wrapped {this.state.symbol}</button>
+					<br /><br />
+					<a target="_blank" rel="noopener noreferrer" href={swapUrl0}>
+						<button>Sell Bonds Against Your Collateral</button>
+					</a>
+					<a target="_blank" rel="noopener noreferrer" href={swapUrl1}>
+						<button>Buy Bonds</button>
+					</a>
+					<br /><br />
+					<a target="_blank" rel="noopener noreferrer" href={addLiquidityUrl}>
+						<button>Add Liquidity to Uniswap</button>
+					</a>
+					<a target="_blank" rel="noopener noreferrer" href={removeLiquidityUrl}>
+						<button>Remove Liquidity From Uniswap</button>
+					</a>
+					
+				</div>;
+		else if (maturity < parseInt((new Date()).getTime()/1000))
+			buttons =
+				<div>
+					<h1 className="subHeader">This Bond has matured</h1>
+					<button onClick={this.claim}>Claim Payout</button>
+					<br /><br />
+					<a target="_blank" rel="noopener noreferrer" href={removeLiquidityUrl}>
+						<button>Remove Liquidity From Uniswap</button>
+					</a>
+				</div>;
+
 		return (
 			<div className="content">
 				<h1 className="header">Rate Exposure With Zero Coupon Bonds for Ethereum Assets</h1>
-
 				{this.state.jsxCapitalHandler}
 				<br />
-				<button onClick={this.clickFind1}>Find Annualized Yield From Price</button>
-				<button onClick={this.clickFind2}>Find Price From Annualized Yield</button>
-				<br /><br />
-				<button onClick={this.clickWrap}>Wrap {this.state.symbol}</button>
-				<button onClick={this.clickUnWrap}>Unwrap {this.state.symbol}</button>
-				<button onClick={this.clickDeposit}>Deposit Wrapped {this.state.symbol} as Collateral</button>
-				<button onClick={this.clickWithdraw}>Withdraw Funds {this.state.withdraw}</button>
-				<br /><br />
-				<button onClick={this.clickApproveWrap}>Approve to Wrap {this.state.symbol}</button>
-				<button onClick={this.clickApproveDeposit}>Approve to Deposit Wrapped {this.state.symbol}</button>
-				<br /><br />
-				<a target="_blank" rel="noopener noreferrer" href={swapUrl0}>
-					<button>Sell Bonds Against Your Collateral</button>
-				</a>
-				<a target="_blank" rel="noopener noreferrer" href={swapUrl1}>
-					<button>Buy Bonds</button>
-				</a>
-				<br /><br />
-				<a target="_blank" rel="noopener noreferrer" href={addLiquidityUrl}>
-					<button>Add Liquidity to Uniswap</button>
-				</a>
-				<a target="_blank" rel="noopener noreferrer" href={removeLiquidityUrl}>
-					<button>Remove Liquidity From Uniswap</button>
-				</a>
+				{buttons}
 				<Form label={this.state.label} onSubmit={this.onFormSubmit}/>
-
 				<br />
 			</div>);
 	}
