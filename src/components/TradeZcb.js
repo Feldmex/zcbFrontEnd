@@ -151,10 +151,11 @@ class Home extends Component {
 				.then(res => new BN(res))
 		]);
 
+		console.log(aTokenAddress, maturityTimestamp);
+
 		approvalWrapped = await (new window.web3.eth.Contract(IERC20Abi, aTokenAddress))
 			.methods.allowance(window.web3.eth.defaultAccount, aaveWrapperContract._address).call()
 			.then(res => getBalanceString(res, decimals));
-
 
 		//convert to aToken equivalent
 		approvalDeposit = (new BN(approvalDeposit)).mul(conversionRate).div(new BN(_10To18));
@@ -264,17 +265,25 @@ class Home extends Component {
 
 	async wrap(amount) {
 		const {aTokenContract, aaveWrapperContract, decimals, symbol} = this.state;
-		var bal = new BN(await aTokenContract.methods.balanceOf(window.web3.eth.defaultAccount).call());
-		if (bal.cmp(new BN(amount)) === -1) {
-			alert(`Your balance is too low, try to wrap a smaller amount of ${symbol}.`);
-			return;
-		}
-		var approved = new BN(await aTokenContract.methods.allowance(window.web3.eth.defaultAccount, aaveWrapperContract._address).call());
-		if (approved.cmp(new BN(amount)) === -1) {
-			alert(`Please approve at least ${getBalanceString(amount, decimals)} ${symbol} to be wrapped`);
-			return;
-		}
 		var totalSupply = await aaveWrapperContract.methods.totalSupply().call();
+		var bal = new BN(await aTokenContract.methods.balanceOf(window.web3.eth.defaultAccount).call());
+		var approved = new BN(await aTokenContract.methods.allowance(window.web3.eth.defaultAccount, aaveWrapperContract._address).call());
+		if (amount === "MAX")
+			amount = (bal.cmp(approved) === 1? approved : bal).toString();
+		else {
+			if (bal.cmp(new BN(amount)) === -1) {
+				alert(`Your balance is too low, try to wrap a smaller amount of ${symbol}.`);
+				return;
+			}
+			if (approved.cmp(new BN(amount)) === -1) {
+				alert(`Please approve at least ${getBalanceString(amount, decimals)} ${symbol} to be wrapped`);
+				return;
+			}
+		}
+		if (amount === "0") {
+			alert(`Please deposit a non 0 amount`);
+			return;
+		}
 		if (totalSupply === "0")
 			await aaveWrapperContract.methods.firstDeposit(window.web3.eth.defaultAccount, amount).send({from: window.web3.eth.defaultAccount});
 		else
@@ -282,46 +291,63 @@ class Home extends Component {
 	}
 
 	async unWrap(amount) {
-		const {aaveWrapperContract, symbol} = this.state;
+		const {aaveWrapperContract, symbol, conversionRate} = this.state;
 		var bal = new BN(await aaveWrapperContract.methods.balanceOf(window.web3.eth.defaultAccount).call());
-		if (bal.cmp(new BN(amount)) === -1) {
-			alert(`Your balance is too low, try to unwrap a smaller amount of wrapped ${symbol}.`);
-			return;
+		if (amount === "MAX")
+			amount = bal.toString();
+		else {
+			amount = (new BN(amount)).mul(new BN(_10To18)).div(conversionRate).toString();
+			if (bal.cmp(new BN(amount)) === -1) {
+				alert(`Your balance is too low, try to unwrap a smaller amount of wrapped ${symbol}.`);
+				return;
+			}
 		}
-		await aaveWrapperContract.methods.withdrawAToken(window.web3.eth.defaultAccount, amount).send({from: window.web3.eth.defaultAccount});
+		await aaveWrapperContract.methods.withdrawWrappedToken(window.web3.eth.defaultAccount, amount).send({from: window.web3.eth.defaultAccount});
 	}
 
 	async deposit(amount) {
 		const {contract, aaveWrapperContract, symbol, decimals, conversionRate} = this.state;
-		amount = (new BN(amount)).mul(new BN(_10To18)).div(conversionRate).toString();
 		var bal = new BN(await aaveWrapperContract.methods.balanceOf(window.web3.eth.defaultAccount).call());
-		if (bal.cmp(new BN(amount)) === -1) {
-			alert(`Your balance is too low, try to deposit a smaller amount of wrapped ${symbol}.`);
-			return;
-		}
 		var approved = new BN(await aaveWrapperContract.methods.allowance(window.web3.eth.defaultAccount, contract._address).call());
-		if (approved.cmp(new BN(amount)) === -1) {
-			alert(`Please approve at least ${getBalanceString(amount, decimals)} wrapped ${symbol} to be deposited`);
-			return;
+		if (amount === "MAX")
+			amount = (bal.cmp(approved) === 1? approved : bal).toString();
+		else {
+			amount = (new BN(amount)).mul(new BN(_10To18)).div(conversionRate).toString();
+			if (bal.cmp(new BN(amount)) === -1) {
+				alert(`Your balance is too low, try to deposit a smaller amount of wrapped ${symbol}.`);
+				return;
+			}
+			if (approved.cmp(new BN(amount)) === -1) {
+				alert(`Please approve at least ${getBalanceString(amount, decimals)} wrapped ${symbol} to be deposited`);
+				return;
+			}
 		}
-		var wrappedAmount = await aaveWrapperContract.methods.ATokenToWrappedToken(amount).call();
-		await contract.methods.depositWrappedToken(window.web3.eth.defaultAccount, wrappedAmount).send({from: window.web3.eth.defaultAccount});
+		await contract.methods.depositWrappedToken(window.web3.eth.defaultAccount, amount).send({from: window.web3.eth.defaultAccount});
 	}
 
 	async approveToWrap(amount) {
-		const {aaveWrapperContract, aTokenContract, conversionRate} = this.state;
-		amount = (new BN(amount)).mul(new BN(_10To18)).div(conversionRate).toString();
+		const {aaveWrapperContract, aTokenContract} = this.state;
+		if (amount === "MAX")
+			amount = (new BN(_10To18)).pow(new BN(2)).toString();
 		await aTokenContract.methods.approve(aaveWrapperContract._address, amount).send({from: window.web3.eth.defaultAccount});
 	}
 
 	async approveToDeposit(amount) {
-		const {contract, aaveWrapperContract} = this.state;
-		amount = await aaveWrapperContract.methods.ATokenToWrappedToken(amount).call();
+		const {contract, aaveWrapperContract, conversionRate} = this.state;
+		if (amount === "MAX")
+			amount = (new BN(_10To18)).pow(new BN(2)).toString();
+		else
+			amount = (new BN(amount)).mul(new BN(_10To18)).div(conversionRate).toString();
 		await aaveWrapperContract.methods.approve(contract._address, amount).send({from: window.web3.eth.defaultAccount});
 	}
 
 	async withdraw(amount) {
 		const {contract, aaveWrapperContract, collateralFree, decimals} = this.state;
+		console.log(amount);
+		if (amount === "MAX") {
+			await contract.methods.withdrawAll(window.web3.eth.defaultAccount, false).send({from: window.web3.eth.defaultAccount});
+			return;
+		}
 		amount = await aaveWrapperContract.methods.ATokenToWrappedToken(amount).call();
 		if ((new BN(getAmountFromAdjustedString(collateralFree, decimals))).cmp(new BN(amount)) === -1) {
 			alert(`You don't have enough non-utilised collateral, try to withdraw a smaller amount`);
@@ -331,6 +357,7 @@ class Home extends Component {
 	}
 
 	async findYield(price) {
+		if (price === "MAX") price = "0";
 		const {symbol, maturity} = this.state;
 		var priceString = price;
 		price = parseFloat(price);
@@ -349,6 +376,7 @@ class Home extends Component {
 	}
 
 	async findPrice(_yield) {
+		if (_yield === "MAX") _yield = "0";
 		const {symbol, maturity} = this.state;
 		var yieldString = _yield;
 		_yield = parseFloat(_yield);
@@ -376,7 +404,7 @@ class Home extends Component {
 		if (engaged) return;
 		await (new Promise((res, rej) => this.setState({engaged: true}, res)));
 		try {
-			if (formIndex < 7)
+			if (formIndex < 7 && param !== "MAX")
 				param = getAmountFromAdjustedString(param, decimals);
 			switch(formIndex) {
 				case 1:

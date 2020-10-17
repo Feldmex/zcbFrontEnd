@@ -11,7 +11,7 @@ function Header() {
 			<div className="links">
 				<ul>
 					<li><Link to="/about">About</Link></li>
-					<li><Link to="/balances">My Balances</Link></li>
+					<li><Link to="/curves">Yield Curves</Link></li>
 					<li><Link to="/">Home</Link></li>
 				</ul>
 			</div>

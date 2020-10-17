@@ -15,7 +15,7 @@ class Form extends Component {
 
 	onChangeOnlyNum = (event) => {
 		let val = event.target.value;
-		if (isNaN(val) || val.includes(' ')) {
+		if ((isNaN(val) || val.includes(' ')) && val !== "MAX") {
 			event.target.value = this.state.prevValue;
 		} else {
 			this.setState({
@@ -51,6 +51,12 @@ class Form extends Component {
 		});
 	}
 
+	fillMax = () => {
+		this.setState({
+			value: 'MAX'
+		});
+	}
+
 	render() {
 		if (this.state.label === "") return <div></div>;
 		return (
@@ -59,7 +65,8 @@ class Form extends Component {
 					<label>{this.state.label}</label>
 					<input type="text" onChange={this.onChangeOnlyNum} value={this.state.value}/>
 					<button type="submit">Submit</button>
-					<button type="button" onClick={this.clearInputField}>Clear Input Field</button>
+					<button type="button" onClick={this.fillMax}>Fill Max</button>
+					<button type="button" onClick={this.clearInputField}>Clear</button>
 				</form>
 			</div>);
 	}
