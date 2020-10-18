@@ -70,13 +70,12 @@ class Balances extends Component {
 				(new window.web3.eth.Contract(IERC20Abi, addr)).methods.symbol().call()
 					.then(res => res.substring(1))
 					.then(res => (
-						<li>
+						<li key={addr}>
 							<Link to={`/YieldCurve/${addr}`}>
 								{res}
 							</Link>
 						</li>))
 			));
-			console.log(elements);
 
 			this.setState({
 				set: true,

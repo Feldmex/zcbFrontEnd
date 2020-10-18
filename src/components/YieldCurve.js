@@ -145,12 +145,14 @@ class YieldCurve extends Component {
 			datasets: [
 				{
 					label: 'Annualized Yield (%)',
-					data: info.map(obj => obj._yield)
+					data: info.map(obj => obj._yield),
+					backgroundColor: ['rgba(e, e, e, 0.0)'],
+					lineTension: 0.3
 				}
 			]
 		};
 
-		const chart = <Line data={data} lineTension={0}/>;
+		const chart = <Line data={data} width={250} height={100}/>;
 
 		this.setState({
 			symbol,
